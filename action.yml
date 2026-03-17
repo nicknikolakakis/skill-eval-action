@@ -66,12 +66,12 @@ runs:
         ANTHROPIC_API_KEY: ${{ inputs.anthropic-api-key }}
 
     - name: Setup Node.js
-      uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
       with:
         node-version: ${{ inputs.node-version }}
 
     - name: Setup Python
-      uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+      uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
       with:
         python-version: '3.13'
 
@@ -107,7 +107,7 @@ runs:
 
     - name: Upload eval viewer
       if: inputs.upload-viewer == 'true'
-      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
       with:
         name: eval-viewer-${{ inputs.skill-name }}
         path: ${{ runner.temp }}/skill-eval/${{ inputs.skill-name }}/viewer.html

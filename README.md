@@ -49,9 +49,9 @@ jobs:
 
 | Input | Required | Default | Description |
 |-------|:--------:|---------|-------------|
-| `skill-name` | Yes | — | Name of the skill to evaluate |
-| `skill-path` | Yes | — | Path to the skill directory (must contain `SKILL.md` and `evals/`) |
-| `anthropic-api-key` | Yes | — | Anthropic API key for the `claude` CLI |
+| `skill-name` | Yes | - | Name of the skill to evaluate |
+| `skill-path` | Yes | - | Path to the skill directory (must contain `SKILL.md` and `evals/`) |
+| `anthropic-api-key` | Yes | - | Anthropic API key for the `claude` CLI |
 | `pass-threshold` | No | `80` | Minimum pass rate (0-100) to succeed |
 | `timeout` | No | `120` | Timeout per eval case in seconds |
 | `post-comment` | No | `true` | Post results as a PR comment |
