@@ -1,0 +1,15 @@
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    cooldown:
+      default-days: 7
+      semver-major: 7
+      semver-minor: 3
+      semver-patch: 1
+    groups:
+      minor-actions-dependencies:
+        update-types: [minor, patch]

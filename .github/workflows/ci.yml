@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.13'
+
+      - name: Lint Python scripts
+        run: |
+          pip install ruff --quiet
+          ruff check scripts/
+
+      - name: Validate action.yml
+        run: |
+          python -c "
+          import yaml, sys
+          with open('action.yml') as f:
+              data = yaml.safe_load(f)
+          assert 'name' in data, 'Missing name'
+          assert 'inputs' in data, 'Missing inputs'
+          assert 'runs' in data, 'Missing runs'
+          print('action.yml is valid')
+          "
+
+      - name: Check zizmor (if available)
+        run: |
+          pip install zizmor --quiet 2>/dev/null || true
+          if command -v zizmor &>/dev/null; then
+            zizmor action.yml .github/workflows/*.yml
+          else
+            echo "zizmor not available, skipping"
+          fi

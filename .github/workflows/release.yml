@@ -1,0 +1,39 @@
+name: Release
+
+on:
+  release:
+    types: [released]
+  workflow_dispatch:
+    inputs:
+      TAG_NAME:
+        description: 'Tag name that the major tag will point to'
+        required: true
+
+env:
+  TAG_NAME: ${{ github.event.inputs.TAG_NAME || github.event.release.tag_name }}
+
+permissions:
+  contents: write
+
+jobs:
+  update-major-tag:
+    name: Update major version tag to ${{ github.event.inputs.TAG_NAME || github.event.release.tag_name }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Update major version tag
+        env:
+          TAG: ${{ env.TAG_NAME }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          major_version=$(echo "$TAG" | cut -d. -f1)
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
+          git tag -fa "$major_version" -m "Update $major_version to $TAG"
+          git push origin "$major_version" --force
+          echo "Updated $major_version tag to point to $TAG"

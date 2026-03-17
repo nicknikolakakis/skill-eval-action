@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Eval Review</title>
+  <style>
+    :root {
+      --bg: #faf9f5;
+      --surface: #ffffff;
+      --border: #e8e6dc;
+      --text: #141413;
+      --text-muted: #b0aea5;
+      --accent: #d97757;
+      --accent-hover: #c4613f;
+      --green: #788c5d;
+      --green-bg: #eef2e8;
+      --red: #c44;
+      --red-bg: #fceaea;
+      --header-bg: #141413;
+      --header-text: #faf9f5;
+      --radius: 6px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg); color: var(--text);
+      height: 100vh; display: flex; flex-direction: column;
+    }
+
+    /* Header */
+    .header {
+      background: var(--header-bg); color: var(--header-text);
+      padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center;
+    }
+    .header h1 { font-size: 1.25rem; font-weight: 600; }
+    .header .meta { font-size: 0.8rem; opacity: 0.7; }
+
+    /* Tabs */
+    .tabs {
+      display: flex; gap: 0; border-bottom: 2px solid var(--border);
+      padding: 0 2rem; background: var(--surface);
+    }
+    .tab {
+      padding: 0.75rem 1.25rem; cursor: pointer; font-size: 0.85rem; font-weight: 500;
+      border-bottom: 2px solid transparent; margin-bottom: -2px; color: var(--text-muted);
+      transition: all 0.15s;
+    }
+    .tab:hover { color: var(--text); }
+    .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+    /* Main */
+    .main { flex: 1; overflow-y: auto; padding: 1.5rem 2rem; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* Cards */
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); margin-bottom: 1rem;
+    }
+    .card-header {
+      padding: 0.75rem 1rem; font-size: 0.8rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.04em;
+      color: var(--text-muted); border-bottom: 1px solid var(--border);
+      cursor: pointer; display: flex; justify-content: space-between; align-items: center;
+    }
+    .card-header:hover { background: var(--bg); }
+    .card-body { padding: 1rem; }
+    .card-body.collapsed { display: none; }
+
+    /* Prompt */
+    .prompt { background: var(--bg); padding: 0.75rem; border-radius: var(--radius); font-size: 0.9rem; margin-bottom: 1rem; white-space: pre-wrap; }
+
+    /* Expectations */
+    .expectation {
+      display: flex; gap: 0.75rem; padding: 0.5rem 0;
+      border-bottom: 1px solid var(--border); align-items: flex-start;
+    }
+    .expectation:last-child { border-bottom: none; }
+    .badge {
+      padding: 0.15rem 0.5rem; border-radius: 3px; font-size: 0.7rem;
+      font-weight: 700; text-transform: uppercase; flex-shrink: 0;
+    }
+    .badge.pass { background: var(--green-bg); color: var(--green); }
+    .badge.fail { background: var(--red-bg); color: var(--red); }
+    .exp-text { font-size: 0.9rem; }
+    .exp-evidence { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem; font-style: italic; }
+
+    /* Claims */
+    .claim { padding: 0.4rem 0; border-bottom: 1px solid var(--border); font-size: 0.85rem; }
+    .claim:last-child { border-bottom: none; }
+
+    /* Eval Feedback */
+    .eval-feedback { background: #fff8e1; border: 1px solid #ffe082; border-radius: var(--radius); padding: 0.75rem; margin-top: 0.75rem; }
+    .eval-feedback h4 { font-size: 0.8rem; color: #f57f17; margin-bottom: 0.5rem; }
+    .eval-feedback li { font-size: 0.85rem; margin: 0.25rem 0; margin-left: 1rem; }
+
+    /* Output files */
+    .file-block { margin: 0.5rem 0; }
+    .file-name { font-family: monospace; font-size: 0.8rem; color: var(--accent); margin-bottom: 0.25rem; }
+    .file-content {
+      background: #1e1e1e; color: #d4d4d4; padding: 0.75rem; border-radius: var(--radius);
+      font-family: monospace; font-size: 0.8rem; white-space: pre-wrap;
+      max-height: 400px; overflow-y: auto;
+    }
+    .file-image { max-width: 100%; border-radius: var(--radius); }
+
+    /* Benchmark table */
+    .bench-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    .bench-table th, .bench-table td { padding: 0.5rem 0.75rem; text-align: left; border-bottom: 1px solid var(--border); }
+    .bench-table th { background: var(--bg); font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); }
+    .bar { display: inline-block; height: 14px; border-radius: 2px; vertical-align: middle; }
+    .bar.green { background: var(--green); }
+    .bar.red { background: var(--red); }
+
+    /* Feedback form */
+    .feedback-form { display: flex; flex-direction: column; gap: 0.75rem; }
+    .feedback-form textarea {
+      width: 100%; min-height: 100px; padding: 0.75rem; border: 1px solid var(--border);
+      border-radius: var(--radius); font-family: inherit; font-size: 0.9rem; resize: vertical;
+    }
+    .feedback-form button {
+      align-self: flex-start; background: var(--accent); color: white; border: none;
+      padding: 0.5rem 1.25rem; border-radius: var(--radius); cursor: pointer; font-weight: 600;
+    }
+    .feedback-form button:hover { background: var(--accent-hover); }
+
+    /* Summary bar */
+    .summary-bar {
+      display: flex; gap: 1.5rem; padding: 0.75rem 1rem; background: var(--bg);
+      border-radius: var(--radius); margin-bottom: 1rem; font-size: 0.85rem;
+    }
+    .summary-stat { display: flex; align-items: center; gap: 0.35rem; }
+    .summary-stat .label { color: var(--text-muted); }
+    .summary-stat .value { font-weight: 600; }
+    .summary-stat .value.good { color: var(--green); }
+    .summary-stat .value.bad { color: var(--red); }
+
+    /* Timing */
+    .timing { font-size: 0.8rem; color: var(--text-muted); }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <h1 id="skill-name">Eval Review</h1>
+      <div class="meta" id="run-count"></div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" data-tab="grading">Grading</div>
+    <div class="tab" data-tab="benchmark">Benchmark</div>
+    <div class="tab" data-tab="feedback">Feedback</div>
+  </div>
+
+  <div class="main">
+    <div id="tab-grading" class="tab-content active"></div>
+    <div id="tab-benchmark" class="tab-content"></div>
+    <div id="tab-feedback" class="tab-content"></div>
+  </div>
+
+  <script>
+    /*__EMBEDDED_DATA__*/
+
+    const data = typeof EMBEDDED_DATA !== 'undefined' ? EMBEDDED_DATA : { skill_name: 'Unknown', runs: [] };
+
+    // Header
+    document.getElementById('skill-name').textContent = `Eval Review: ${data.skill_name}`;
+    document.getElementById('run-count').textContent = `${data.runs.length} run(s)`;
+
+    // Tab switching
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById(`tab-${tab.dataset.tab}`).classList.add('active');
+      });
+    });
+
+    // Grading tab
+    function renderGrading() {
+      const container = document.getElementById('tab-grading');
+
+      // Summary bar
+      let totalPassed = 0, totalFailed = 0, totalTime = 0, totalTokens = 0;
+      data.runs.forEach(run => {
+        if (run.grading?.summary) {
+          totalPassed += run.grading.summary.passed || 0;
+          totalFailed += run.grading.summary.failed || 0;
+        }
+        if (run.timing) {
+          totalTime += run.timing.total_duration_seconds || 0;
+          totalTokens += run.timing.total_tokens || 0;
+        }
+      });
+      const total = totalPassed + totalFailed;
+      const passRate = total > 0 ? (totalPassed / total * 100).toFixed(0) : '-';
+      const prClass = passRate >= 80 ? 'good' : 'bad';
+
+      container.innerHTML = `
+        <div class="summary-bar">
+          <div class="summary-stat"><span class="label">Pass Rate:</span> <span class="value ${prClass}">${passRate}% (${totalPassed}/${total})</span></div>
+          <div class="summary-stat"><span class="label">Time:</span> <span class="value">${totalTime.toFixed(1)}s</span></div>
+          <div class="summary-stat"><span class="label">Tokens:</span> <span class="value">${totalTokens.toLocaleString()}</span></div>
+        </div>
+      `;
+
+      data.runs.forEach(run => {
+        const card = document.createElement('div');
+        card.className = 'card';
+
+        const summary = run.grading?.summary;
+        const statusText = summary ? `${summary.passed}/${summary.total} passed` : 'not graded';
+        const statusClass = summary && summary.pass_rate >= 0.8 ? 'pass' : 'fail';
+
+        card.innerHTML = `
+          <div class="card-header" onclick="this.nextElementSibling.classList.toggle('collapsed')">
+            <span>${run.id}</span>
+            <span class="badge ${statusClass}">${statusText}</span>
+          </div>
+          <div class="card-body">
+            <div class="prompt">${escapeHtml(run.prompt)}</div>
+            ${renderExpectations(run.grading)}
+            ${renderClaims(run.grading)}
+            ${renderEvalFeedback(run.grading)}
+            ${renderOutputs(run.outputs)}
+            ${renderTiming(run.timing)}
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function renderExpectations(grading) {
+      if (!grading?.expectations?.length) return '';
+      return grading.expectations.map(exp => `
+        <div class="expectation">
+          <span class="badge ${exp.passed ? 'pass' : 'fail'}">${exp.passed ? 'PASS' : 'FAIL'}</span>
+          <div>
+            <div class="exp-text">${escapeHtml(exp.text)}</div>
+            ${exp.evidence ? `<div class="exp-evidence">${escapeHtml(exp.evidence)}</div>` : ''}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function renderClaims(grading) {
+      if (!grading?.claims?.length) return '';
+      return `
+        <div style="margin-top: 0.75rem">
+          <div style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.5rem;">Implicit Claims</div>
+          ${grading.claims.map(c => `
+            <div class="claim">
+              <span class="badge ${c.verified ? 'pass' : 'fail'}" style="font-size: 0.65rem">${c.verified ? 'OK' : '?'}</span>
+              <strong>${escapeHtml(c.type)}</strong>: ${escapeHtml(c.claim)}
+              ${c.evidence ? ` — <em style="color: var(--text-muted)">${escapeHtml(c.evidence)}</em>` : ''}
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    function renderEvalFeedback(grading) {
+      if (!grading?.eval_feedback?.suggestions?.length) return '';
+      return `
+        <div class="eval-feedback">
+          <h4>Eval Critique</h4>
+          <ul>
+            ${grading.eval_feedback.suggestions.map(s =>
+              `<li>${s.assertion ? `<strong>${escapeHtml(s.assertion)}</strong>: ` : ''}${escapeHtml(s.reason)}</li>`
+            ).join('')}
+          </ul>
+          ${grading.eval_feedback.overall ? `<p style="margin-top:0.5rem;font-size:0.85rem">${escapeHtml(grading.eval_feedback.overall)}</p>` : ''}
+        </div>
+      `;
+    }
+
+    function renderOutputs(outputs) {
+      if (!outputs?.length) return '';
+      return `
+        <div style="margin-top: 0.75rem">
+          <div style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.5rem;">Output Files</div>
+          ${outputs.map(f => {
+            if (f.type === 'text') {
+              return `<div class="file-block"><div class="file-name">${escapeHtml(f.name)}</div><div class="file-content">${escapeHtml(f.content)}</div></div>`;
+            } else if (f.type === 'image') {
+              return `<div class="file-block"><div class="file-name">${escapeHtml(f.name)}</div><img class="file-image" src="${f.data_uri}" alt="${escapeHtml(f.name)}"></div>`;
+            } else if (f.type === 'binary') {
+              return `<div class="file-block"><div class="file-name">${escapeHtml(f.name)}</div><a href="${f.data_uri}" download="${escapeHtml(f.name)}">Download (${f.mime})</a></div>`;
+            }
+            return '';
+          }).join('')}
+        </div>
+      `;
+    }
+
+    function renderTiming(timing) {
+      if (!timing) return '';
+      return `<div class="timing" style="margin-top:0.5rem">
+        Duration: ${(timing.total_duration_seconds || 0).toFixed(1)}s | Tokens: ${(timing.total_tokens || 0).toLocaleString()}
+      </div>`;
+    }
+
+    // Benchmark tab
+    function renderBenchmark() {
+      const container = document.getElementById('tab-benchmark');
+      const bm = data.benchmark;
+      if (!bm) {
+        container.innerHTML = '<p style="color:var(--text-muted)">No benchmark data available. Run <code>aggregate_benchmark.py</code> first.</p>';
+        return;
+      }
+
+      let html = '<h2 style="font-size:1.1rem;margin-bottom:1rem">Benchmark Summary</h2>';
+
+      // Summary table
+      const summary = bm.run_summary || {};
+      const configs = Object.keys(summary).filter(k => k !== 'delta');
+      const delta = summary.delta || {};
+
+      html += '<table class="bench-table"><tr><th>Metric</th>';
+      configs.forEach(c => { html += `<th>${c.replace(/_/g,' ')}</th>`; });
+      if (delta.pass_rate) html += '<th>Delta</th>';
+      html += '</tr>';
+
+      ['pass_rate', 'time_seconds', 'tokens'].forEach(metric => {
+        html += `<tr><td style="font-weight:600">${metric.replace(/_/g,' ')}</td>`;
+        configs.forEach(c => {
+          const s = summary[c]?.[metric] || {};
+          if (metric === 'pass_rate') {
+            html += `<td>${((s.mean||0)*100).toFixed(0)}% +/- ${((s.stddev||0)*100).toFixed(0)}%</td>`;
+          } else {
+            html += `<td>${(s.mean||0).toFixed(1)} +/- ${(s.stddev||0).toFixed(1)}</td>`;
+          }
+        });
+        if (delta[metric]) html += `<td>${delta[metric]}</td>`;
+        html += '</tr>';
+      });
+      html += '</table>';
+
+      // Per-run results
+      if (bm.runs?.length) {
+        html += '<h3 style="font-size:0.95rem;margin:1.5rem 0 0.75rem">Per-Run Results</h3>';
+        html += '<table class="bench-table"><tr><th>#</th><th>Eval</th><th>Config</th><th>Pass Rate</th><th>Time</th><th>Tokens</th></tr>';
+        bm.runs.forEach(run => {
+          const r = run.result || {};
+          const pct = ((r.pass_rate || 0) * 100).toFixed(0);
+          const barW = Math.max(2, pct * 0.8);
+          const barClass = pct >= 80 ? 'green' : 'red';
+          html += `<tr>
+            <td>${run.eval_id}</td>
+            <td>${run.eval_name || ''}</td>
+            <td>${run.configuration || ''}</td>
+            <td><span class="bar ${barClass}" style="width:${barW}px"></span> ${pct}% (${r.passed||0}/${r.total||0})</td>
+            <td>${(r.time_seconds||0).toFixed(1)}s</td>
+            <td>${(r.tokens||0).toLocaleString()}</td>
+          </tr>`;
+        });
+        html += '</table>';
+      }
+
+      // Notes
+      if (bm.notes?.length) {
+        html += '<div style="margin-top:1.5rem"><h3 style="font-size:0.95rem;margin-bottom:0.5rem">Analyzer Notes</h3><ul>';
+        bm.notes.forEach(n => { html += `<li style="font-size:0.85rem;margin:0.25rem 0">${escapeHtml(n)}</li>`; });
+        html += '</ul></div>';
+      }
+
+      container.innerHTML = html;
+    }
+
+    // Feedback tab
+    function renderFeedback() {
+      const container = document.getElementById('tab-feedback');
+      let html = '';
+      data.runs.forEach(run => {
+        html += `
+          <div class="card">
+            <div class="card-header"><span>${run.id}</span></div>
+            <div class="card-body">
+              <div class="prompt" style="font-size:0.8rem;margin-bottom:0.75rem">${escapeHtml(run.prompt.substring(0, 200))}${run.prompt.length > 200 ? '...' : ''}</div>
+              <div class="feedback-form">
+                <textarea id="fb-${run.id}" placeholder="Your feedback on this run..."></textarea>
+                <div style="display:flex;gap:0.5rem;align-items:center">
+                  <label style="font-size:0.8rem;color:var(--text-muted)">Quality:</label>
+                  ${[1,2,3,4,5].map(n => `<label style="font-size:0.85rem"><input type="radio" name="q-${run.id}" value="${n}"> ${n}</label>`).join('')}
+                </div>
+                <button onclick="saveFeedback('${run.id}')">Save</button>
+              </div>
+            </div>
+          </div>
+        `;
+      });
+      container.innerHTML = html;
+    }
+
+    function saveFeedback(runId) {
+      const textarea = document.getElementById(`fb-${runId}`);
+      const quality = document.querySelector(`input[name="q-${runId}"]:checked`);
+
+      fetch('/api/feedback', { method: 'GET' })
+        .then(r => r.json())
+        .then(existing => {
+          const reviews = existing.reviews || [];
+          reviews.push({
+            run_id: runId,
+            feedback: textarea.value,
+            quality: quality ? parseInt(quality.value) : null,
+            timestamp: new Date().toISOString(),
+          });
+          return fetch('/api/feedback', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reviews }),
+          });
+        })
+        .then(r => {
+          if (r.ok) {
+            textarea.style.borderColor = 'var(--green)';
+            setTimeout(() => { textarea.style.borderColor = ''; }, 2000);
+          }
+        })
+        .catch(() => {});
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    // Init
+    renderGrading();
+    renderBenchmark();
+    renderFeedback();
+  </script>
+</body>
+</html>

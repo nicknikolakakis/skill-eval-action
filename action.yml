@@ -1,0 +1,135 @@
+name: 'Skill Eval'
+description: 'Evaluate Claude Code skills against YAML test cases with automated grading and PR reporting'
+author: 'Nick Nikolakakis'
+
+branding:
+  icon: 'check-circle'
+  color: 'orange'
+
+inputs:
+  skill-name:
+    description: 'Name of the skill to evaluate'
+    required: true
+  skill-path:
+    description: 'Path to the skill directory (containing SKILL.md and evals/)'
+    required: true
+  anthropic-api-key:
+    description: 'Anthropic API key for claude CLI'
+    required: true
+  pass-threshold:
+    description: 'Minimum pass rate (0-100) to succeed'
+    required: false
+    default: '80'
+  timeout:
+    description: 'Timeout per eval case in seconds'
+    required: false
+    default: '120'
+  post-comment:
+    description: 'Post results as a PR comment'
+    required: false
+    default: 'true'
+  github-token:
+    description: 'GitHub token for posting PR comments'
+    required: false
+    default: ${{ github.token }}
+  upload-viewer:
+    description: 'Upload eval-viewer HTML as an artifact'
+    required: false
+    default: 'true'
+  node-version:
+    description: 'Node.js version for claude CLI installation'
+    required: false
+    default: '22'
+
+outputs:
+  pass-rate:
+    description: 'Overall pass rate as percentage (0-100)'
+    value: ${{ steps.eval.outputs.pass_rate }}
+  passed:
+    description: 'Total criteria passed'
+    value: ${{ steps.eval.outputs.passed }}
+  total:
+    description: 'Total criteria evaluated'
+    value: ${{ steps.eval.outputs.total }}
+  cases-run:
+    description: 'Number of eval cases executed'
+    value: ${{ steps.eval.outputs.cases_run }}
+
+runs:
+  using: 'composite'
+  steps:
+    # Mask the API key before anything else
+    - name: Mask secrets
+      shell: bash
+      run: echo "::add-mask::$ANTHROPIC_API_KEY"
+      env:
+        ANTHROPIC_API_KEY: ${{ inputs.anthropic-api-key }}
+
+    - name: Setup Node.js
+      uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      with:
+        node-version: ${{ inputs.node-version }}
+
+    - name: Setup Python
+      uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+      with:
+        python-version: '3.13'
+
+    - name: Install dependencies
+      shell: bash
+      run: |
+        pip install pyyaml --quiet
+        npm install -g @anthropic-ai/claude-code --quiet 2>/dev/null || true
+        claude --version || { echo "::error::Failed to install claude CLI"; exit 1; }
+
+    - name: Run eval pipeline
+      id: eval
+      shell: bash
+      run: python "$GITHUB_ACTION_PATH/scripts/eval.py"
+      env:
+        GITHUB_ACTION_PATH: ${{ github.action_path }}
+        SKILL_NAME: ${{ inputs.skill-name }}
+        SKILL_PATH: ${{ inputs.skill-path }}
+        EVAL_TIMEOUT: ${{ inputs.timeout }}
+        PASS_THRESHOLD: ${{ inputs.pass-threshold }}
+        ANTHROPIC_API_KEY: ${{ inputs.anthropic-api-key }}
+        WORKSPACE: ${{ runner.temp }}/skill-eval/${{ inputs.skill-name }}
+
+    - name: Generate eval viewer
+      if: inputs.upload-viewer == 'true'
+      shell: bash
+      run: python "$GITHUB_ACTION_PATH/scripts/generate_viewer.py"
+      env:
+        GITHUB_ACTION_PATH: ${{ github.action_path }}
+        WORKSPACE: ${{ runner.temp }}/skill-eval/${{ inputs.skill-name }}
+        SKILL_NAME: ${{ inputs.skill-name }}
+        TEMPLATE_PATH: ${{ github.action_path }}/scripts/viewer.html
+
+    - name: Upload eval viewer
+      if: inputs.upload-viewer == 'true'
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      with:
+        name: eval-viewer-${{ inputs.skill-name }}
+        path: ${{ runner.temp }}/skill-eval/${{ inputs.skill-name }}/viewer.html
+        retention-days: 30
+
+    - name: Post PR comment
+      if: inputs.post-comment == 'true' && github.event_name == 'pull_request'
+      shell: bash
+      run: python "$GITHUB_ACTION_PATH/scripts/post_comment.py"
+      env:
+        GITHUB_ACTION_PATH: ${{ github.action_path }}
+        WORKSPACE: ${{ runner.temp }}/skill-eval/${{ inputs.skill-name }}
+        SKILL_NAME: ${{ inputs.skill-name }}
+        PASS_THRESHOLD: ${{ inputs.pass-threshold }}
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+        REPO: ${{ github.repository }}
+
+    - name: Check pass threshold
+      shell: bash
+      run: python "$GITHUB_ACTION_PATH/scripts/check_threshold.py"
+      env:
+        GITHUB_ACTION_PATH: ${{ github.action_path }}
+        PASS_RATE: ${{ steps.eval.outputs.pass_rate }}
+        PASS_THRESHOLD: ${{ inputs.pass-threshold }}
