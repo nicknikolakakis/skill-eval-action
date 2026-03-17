@@ -28,6 +28,7 @@ permissions:
 jobs:
   eval:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     strategy:
       matrix:
         skill:
@@ -35,7 +36,7 @@ jobs:
           - k8s-operator-sdk
           - secure-gh-workflow
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - uses: nicknikolakakis/skill-eval-action@v1
         with:
@@ -57,6 +58,7 @@ jobs:
 | `post-comment` | No | `true` | Post results as a PR comment |
 | `github-token` | No | `${{ github.token }}` | Token for PR comments |
 | `upload-viewer` | No | `true` | Upload eval-viewer HTML as an artifact |
+| `node-version` | No | `22` | Node.js version for claude CLI installation |
 
 ## Outputs
 
@@ -89,15 +91,15 @@ Place YAML files in `<skill-path>/evals/`:
 # evals/001-basic-usage.yaml
 name: Basic usage
 prompt: "The user prompt that should trigger and test this skill"
-files:                          # optional — temp files created before the test
+files:                          # optional -temp files created before the test
   - path: "main.tf"
     content: |
       resource "aws_instance" "web" {}
-criteria:                       # success criteria — ALL must pass
+criteria:                       # success criteria -ALL must pass
   - "Output contains a valid resource block"
   - "Uses for_each, not count, for multiple resources"
-expect_skill: true              # optional — default true
-timeout: 120                    # optional — default from action input
+expect_skill: true              # optional -default true
+timeout: 120                    # optional -default from action input
 ```
 
 Include at least one negative trigger case (`expect_skill: false`).
@@ -110,7 +112,7 @@ The action posts (or updates) a PR comment with:
 - Collapsible failed criteria with evidence
 - Eval metadata (time, tokens, threshold)
 
-Comments are upserted using an HTML marker — re-runs update the existing comment instead of creating duplicates.
+Comments are upserted using an HTML marker -re-runs update the existing comment instead of creating duplicates.
 
 ## Cost considerations
 
